@@ -6,6 +6,7 @@ import android.widget.Button;
 
 import com.chaquo.python.PyObject;
 import com.chaquo.python.Python;
+import com.chaquo.python.android.AndroidPlatform;
 
 import java.util.Arrays;
 import static_proxy.PyMathLib.*;
@@ -15,10 +16,14 @@ public class MainActivity extends AppCompatActivity {
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
+        if (! Python.isStarted()) {
+            Python.start(new AndroidPlatform(getApplicationContext()));
+        }
         Python py = Python.getInstance();
 
         PyObject BA = py.getModule("static_proxy.PyMathLib").get("Butter");
-        PyObject ba_po = BA.call();
+
+        PyObject ba_po = BA.call(new Coordinate());
         Butter ba = ba_po.toJava(Butter.class);
 
 
@@ -48,6 +53,11 @@ public class MainActivity extends AppCompatActivity {
         Button btn = findViewById(R.id.button);
         String outputString = "butterworth bandpass filter\n"+y1+y2 +"\n\n"+"powerSPec(np.fit.fit)\n"
                 +p1+p2+"\n\n"+"freq (fftfreq)\n"+f;
-        btn.setText(outputString);
+        ShewchuksDeterminant sd = new ShewchuksDeterminant();
+        Coordinate A = new Coordinate(0,0);
+        Coordinate B = new Coordinate(10,0);
+        Coordinate C = new Coordinate(10,-10);
+        //sd.orient2d(A,B,C)
+        btn.setText(Double.toString(npScipy.CCW()));
     }
 }

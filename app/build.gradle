@@ -34,6 +34,10 @@ android {
                 install "numpy"
                 install "pandas"
                 install "sklearn"
+                install "imutils"
+                install "opencv-python"
+
+
 
             }
 
@@ -49,11 +53,7 @@ android {
         // Remove other languages imported from Android support libraries.
         resConfigs "en"
     }
-    applicationVariants.all { variant ->
-        variant.outputs.all {
-            outputFileName = "demo-${variant.versionName}-${variant.name}.apk"
-        }
-    }
+
     buildTypes {
         release {
             minifyEnabled false
