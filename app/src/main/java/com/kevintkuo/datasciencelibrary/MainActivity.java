@@ -23,15 +23,14 @@ public class MainActivity extends AppCompatActivity {
 
         PyObject BA = py.getModule("static_proxy.PyMathLib").get("Butter");
 
-        PyObject ba_po = BA.call(new Coordinate());
+        PyObject ba_po = BA.call();
         Butter ba = ba_po.toJava(Butter.class);
 
 
         //Dummy data
-        double[][] data = {{1.0,3.1,1.0,1.9,2.0,1.0,2.0,1.5,2.0},{1.0,3.0,1.3,1.0,2.0,1.7,1.0,2.0,2.0}};
-        double[][] y = ba.butter_bandpass_filter(data, 0.75,4.0, 30.0, 4);
-        String y1 = Arrays.toString(y[0]);
-        String y2 = Arrays.toString(y[1]);
+        double[] data = {1.0,3.1,1.0,1.9,2.0,1.0,2.0,1.5,2.0};
+
+
 
 
 
@@ -41,23 +40,44 @@ public class MainActivity extends AppCompatActivity {
 
 
 
-        double[][] powerSpec = npScipy.get_powerSpec(y, true);
 
+
+
+
+        double[][] detrend = npScipy.get_detrend(data,true);
+
+        String d1 = Arrays.toString(detrend[0]);
+        String d2 = Arrays.toString(detrend[1]);
+
+
+
+
+        double[][] y = ba.butter_bandpass_filter(detrend, 0.75,4.0, 30.0, 4);
+        String y1 = Arrays.toString(y[0]);
+        String y2 = Arrays.toString(y[1]);
+
+
+
+        double[][] powerSpec = npScipy.get_powerSpec(y, true);
         String p1 = Arrays.toString(powerSpec[0]);
         String p2 = Arrays.toString(powerSpec[1]);
+
+
 
         double[] freq = npScipy.fftfreq(150, (1.0/30));
         String f = Arrays.toString(freq);
 
 
+
+
         Button btn = findViewById(R.id.button);
-        String outputString = "butterworth bandpass filter\n"+y1+y2 +"\n\n"+"powerSPec(np.fit.fit)\n"
+        String outputString = "detrend\n"+d1+d2+"\n\n"+"butterworth bandpass filter\n"+y1+y2+"\n\n"+"powerSPec(np.fit.fit)\n"
                 +p1+p2+"\n\n"+"freq (fftfreq)\n"+f;
         ShewchuksDeterminant sd = new ShewchuksDeterminant();
         Coordinate A = new Coordinate(0,0);
         Coordinate B = new Coordinate(10,0);
         Coordinate C = new Coordinate(10,-10);
         //sd.orient2d(A,B,C)
-        btn.setText(Double.toString(npScipy.CCW()));
+        btn.setText(outputString);
     }
 }
