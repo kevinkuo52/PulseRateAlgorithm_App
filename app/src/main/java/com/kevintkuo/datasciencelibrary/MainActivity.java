@@ -8,7 +8,10 @@ import com.chaquo.python.PyObject;
 import com.chaquo.python.Python;
 import com.chaquo.python.android.AndroidPlatform;
 
+
 import java.util.Arrays;
+
+
 import static_proxy.PyMathLib.*;
 public class MainActivity extends AppCompatActivity {
 
@@ -33,12 +36,9 @@ public class MainActivity extends AppCompatActivity {
 
 
 
-
         PyObject NS = py.getModule("static_proxy.PyMathLib").get("NpScipy");
         PyObject ns_po = NS.call();
         NpScipy npScipy = ns_po.toJava(NpScipy.class);
-
-
 
 
 
@@ -52,7 +52,7 @@ public class MainActivity extends AppCompatActivity {
 
 
 
-        double[][] y = ba.butter_bandpass_filter(detrend, 0.75,4.0, 30.0, 4);
+        double[][] y = npScipy.butter_bandpass_filter(detrend, 0.75,4.0, 30.0, 4);
         String y1 = Arrays.toString(y[0]);
         String y2 = Arrays.toString(y[1]);
 
@@ -78,6 +78,6 @@ public class MainActivity extends AppCompatActivity {
         Coordinate B = new Coordinate(10,0);
         Coordinate C = new Coordinate(10,-10);
         //sd.orient2d(A,B,C)
-        btn.setText(outputString);
+        btn.setText(Double.toString(npScipy.CCW()));
     }
 }

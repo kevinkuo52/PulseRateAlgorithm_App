@@ -9,11 +9,9 @@ android {
         minSdkVersion 16
         targetSdkVersion 26
 
-        applicationId "com.kevintkuo.datasciencelibrary"
 
-        versionName '5.0.0'
-        def verParsed = versionName.split(/\./).collect { Integer.parseInt(it) }
-        versionCode((verParsed[0] * 1000000) + (verParsed[1] * 1000) + (verParsed[2] * 10) + 1)
+
+
         python {
             // If Chaquopy fails to find Python on your build machine, enable and edit the
             // following line to point to a Python 3.4+ executable.
@@ -34,8 +32,7 @@ android {
                 install "numpy"
                 install "pandas"
                 install "sklearn"
-                install "imutils"
-                install "opencv-python"
+
 
 
 

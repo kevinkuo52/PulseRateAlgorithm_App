@@ -9,8 +9,7 @@ from sklearn.decomposition import FastICA
 import numpy as np
 
 import scipy
-import cv2
-import imutils
+
 class Butter(static_proxy()):
     @constructor([])
     def __init__(self):
@@ -53,7 +52,7 @@ class NpScipy(static_proxy()):
     @method(jarray(jarray(jdouble)), [jarray(jdouble), jboolean])
     def get_detrend(self, window, dummyBoolean):
         ica = FastICA(whiten=False)
-
+        window = np.asarray(window)
         window = (window - np.mean(window, axis=0)) / \
                  np.std(window, axis=0)  # signal normalization
         window = np.reshape(window, (9, 1))#NOTE: it was (150, 1)
@@ -61,6 +60,16 @@ class NpScipy(static_proxy()):
         S = ica.fit_transform(window)  # ICA Part
         detrend = scipy.signal.detrend(S)
         return detrend.tolist()
+
+
+    @method(jarray(jarray(jdouble)), [jarray(jarray(jdouble)), jdouble, jdouble, jdouble, jint])
+    def butter_bandpass_filter(self, data, lowcut, highcut, fs, order):
+        nyq = 0.5 * fs
+        low = lowcut / nyq
+        high = highcut / nyq
+        b, a = butter(order, [low, high], btype='band')
+        y = lfilter(b, a, data)
+        return y
 
 
     '''In PulseRateAlgorithm: 
@@ -75,13 +84,18 @@ class NpScipy(static_proxy()):
     @method(jarray(jdouble), [jint, jdouble])
     def fftfreq(self,a, b):
         return np.fft.fftfreq(a, b).tolist()
-    '''
+
     @method(jdouble,[])
     def CCW(self):
-        #Point = jclass("main/java/com/kevintkuo/datasciencelibrary/Coordinate")
-        A = self.Point(0.0,10.0)
-        return A.x
-    '''
+        Point = jclass("com/kevintkuo/datasciencelibrary/Coordinate")
+        SD = jclass("com/kevintkuo/datasciencelibrary/ShewchuksDeterminant")
+        A = Point(0.0,0.0)
+        B = Point(10.0,.0)
+        C = Point(10.0,10.0)
+
+        return SD.orient2d(A,B,C)
+
+
 
 
 
