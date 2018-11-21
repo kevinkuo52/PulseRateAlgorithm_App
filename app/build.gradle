@@ -32,9 +32,7 @@ android {
                 install "numpy"
                 install "pandas"
                 install "sklearn"
-
-
-
+                install "opencv-python"
 
             }
 

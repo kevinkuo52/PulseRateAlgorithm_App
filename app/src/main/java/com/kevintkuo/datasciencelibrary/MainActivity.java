@@ -78,6 +78,13 @@ public class MainActivity extends AppCompatActivity {
         Coordinate B = new Coordinate(10,0);
         Coordinate C = new Coordinate(10,-10);
         //sd.orient2d(A,B,C)
-        btn.setText(Double.toString(npScipy.CCW()));
+
+        double[] s1 = {1.0,2.0};
+        double[] s2 = {7.0,3.0};
+        double[] s3 = {9.0,10.0};
+        double[] s4 = {18.0,17.0};
+        double[][] pts = {{12.0,1.0},{10.0,18.0},{180.0,1.0},{28.0,1.0},{18.0,17.0},{19.0,19.0},{17.0,8.0},{20.0,17.0},{1800.0,17.0},{14.0,17.0},{1.0,17.0},
+                {100.0,1.0},{18.0,1.0},{1.0,11.0},{1.0,7.0}};
+        btn.setText(Arrays.toString(npScipy.py_kalman_filter(s1, s2, s3, s4, pts, true)[0])+","+Arrays.toString(npScipy.py_kalman_filter(s1, s2, s3, s4, pts, true)[1]));
     }
 }

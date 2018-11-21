@@ -9,7 +9,9 @@ from sklearn.decomposition import FastICA
 import numpy as np
 
 import scipy
-
+from scipy import interpolate
+import math
+import cv2
 class Butter(static_proxy()):
     @constructor([])
     def __init__(self):
@@ -86,7 +88,7 @@ class NpScipy(static_proxy()):
         return np.fft.fftfreq(a, b).tolist()
 
     @method(jdouble,[])
-    def CCW(self):
+    def CCWOG(self):
         Point = jclass("com/kevintkuo/datasciencelibrary/Coordinate")
         SD = jclass("com/kevintkuo/datasciencelibrary/ShewchuksDeterminant")
         A = Point(0.0,0.0)
@@ -94,284 +96,247 @@ class NpScipy(static_proxy()):
         C = Point(10.0,10.0)
 
         return SD.orient2d(A,B,C)
+    @method(jarray(jarray(jdouble)),[jarray(jdouble),jarray(jdouble),jarray(jdouble),jarray(jdouble),jarray(jarray(jdouble)), jboolean])
+    def py_kalman_filter (self, s1, s2, s3, s4, pts, hasROI):
+        return kalman_filter(s1, s2, s3, s4, pts, hasROI)
 
 
+MEASMATRIX = np.array([[1, 0, 0, 0], [0, 1, 0, 0]], np.float32)
+TRANSMATRIX = np.array([[1, 0, 1, 0], [0, 1, 0, 1], [0, 0, 1, 0], [0, 0, 0, 1]], np.float32)
+NOISECOV = np.array([[1, 0, 0, 0], [0, 1, 0, 0], [0, 0, 1, 0], [0, 0, 0, 1]], np.float32) * 0.03
+kalman = [cv2.KalmanFilter(4, 2) for i in range(15)]
+for kal in kalman:
+    kal.measurementMatrix = MEASMATRIX
+    kal.transitionMatrix = TRANSMATRIX
+    kal.processNoiseCov = NOISECOV
+
+prevpts0= [(0,0) for p in range(15)]
+prevpts = [(0,0) for p in range(15)]
+estimation = [(0, 0) for o in range(15)]
+polate = interpolate.interp1d([0,0,0],[0,0,0], bounds_error=False)
+
+def CCW(a,b,c):
+    Point = jclass("com/kevintkuo/datasciencelibrary/Coordinate")
+    SD = jclass("com/kevintkuo/datasciencelibrary/ShewchuksDeterminant")
+    A = Point(a[0],a[1])
+    B = Point(b[0],b[1])
+    C = Point(c[0],c[1])
+    if SD.orient2d(A,B,C)>0:
+        return True
+    else: return False
 
 
+def intersect(a,b,c,d):
+    if CCW(a,c,d)==CCW(b,c,d):
+        return False
+    elif CCW(a,b,c)==CCW(a,b,d):
+        return False
+    else:
+        return True
 
-'''
-    @method(jdouble, [jarray(jarray(jint)),jarray(jarray(jdouble)), jboolean])
-    def getHeartRate(self, shape, frame, dummyBoolean):
-        shape = face_utils.shape_to_np(shape)
-        counter = 0
-        initframecounter = 0
+def convertKalmanArray(list1):
+    temp = []
+    for x, y in list1:
+        temp.append(np.array([[np.float32(x)], [np.float32(y)]]))
+    return temp
 
-        # loop over the (x, y)-coordinates for the facial landmarks
-        # and draw them on the image
-
-        for (x, y) in shape:
-
-            cv2.circle(frame, (x, y), 4, (0, 0, 255), -1)
-            cv2.putText(frame, str(counter), (x, y),
-                        cv2.FONT_HERSHEY_SIMPLEX, 0.4, (255, 255, 255), 1)
-            # setting face as found
-            foundlandmark = True
-
-            # saving particular face landmarks for the ROI box
-            if counter == 21:
-                a1x = x
-                a1y = y / 1.3
-            if counter == 22:
-                a2x = x
-                a2y = y
-            if counter == 27:
-                a3x = x
-                a3y = y
-            if counter == 8:
-                a4x = x
-                a4y = y
-            if counter == 23:
-                a5x = x
-                a5y = y
-
-            if counter == 17:
-                b1x = x
-                b1y = y * 1.2
-            if counter == 31:
-                b2x = x
-                b2y = y
-            if counter == 28:
-                b3x = x
-                b3y = y
-            if counter == 39:
-                b4x = x
-                b4y = y
-                ixc = (a1x + a2x) / 2.2
-                iyc = (a4y + a3y)
-
-            if counter == 26:
-                c1x = x
-                c1y = y / 1.2
-            if counter == 35:
-                c2x = x
-                c2y = y
-            if counter == 28:
-                c3x = x
-                c3y = y
-            if counter == 42:
-                c4x = x
-                c4y = y
-
-            if counter == 16:
-                d1x = x * 1.1
-                d1y = y
-
-            if counter == 0:
-                e1x = x / 1.15
-                e1y = y
-
-            counter = counter + 1
-
-        firstframe = 0
-        initframecounter = initframecounter + 1
+def updateKalman(t1, b1, b2, pts):
+    global prevpts,prevpts0
+    # prevpts0 = prevpts
+    # prevpts = pts
+    # for p in range(len(pts)):
+    #     AM = vectAB(b1, pts[p])
+    #     AB = vectAB(b1, t1)
+    #     AD = vectAB(b1, b2)
+    #     if not withinRegion(AM, AB, AD):
+    #         pts[p] = t1
+    pts2 = convertKalmanArray(pts)
+    for x in range(len(kalman)):
+        kalman[x].correct(pts2[x])
 
 
+def vectAB(p1, p2):
+    x2, y2 = p2
+    x1, y1 = p1
+    return x2 - x1, y2 - y1
 
-        # co-ordinates for the rectangle
-        listforehead = [int(a1x), int(a1y), a2x, a2y]
-        listleftface = [int(b1x), int(b3y), b4x, b2y]
-        listrightface = [int(c1x), int(c3y), c4x, c2y]
+def crossProd(v1, v2):
+    a = np.array(v1)
+    b = np.array(v2)
+    return np.matmul(a,b )
 
-        cv2.rectangle(frame, (listforehead[0], listforehead[1]), (
-            listforehead[2], listforehead[3]), (255, 0, 0), 2)
-        cv2.rectangle(frame, (listleftface[0], listleftface[1]), (
-            listleftface[2], listleftface[3]), (255, 0, 0), 2)
-        cv2.rectangle(frame, (listrightface[0], listrightface[1]), (listrightface[2], listrightface[3]),
-                      (255, 0, 0), 2)
 
-        # converting the frame to HSV
-        HSVframe = CoverttoHSV(HSVframe)
+def scalarMult(v1, v2):
+    x1, y1 = v1
+    x2, y2 = v2
+    return (x1 * x2) + (y1 * y2)
 
-        # checkig if this is the first frame
-        if firstframe == 0:
-            if first == True:
-                listtocheck = listforehead
-                firstframe = 1
-                first = False
+# def intersect(p1, p2, p3, p4):
+#     x1,y1 = p1
+#     x2,y2 = p2
+#     x3,y3 = p3
+#     x4,y4 = p4
+#     if max(x1, x2) < min(x3, x4) or max(y1, y2) < min (y3, y4):
+#         return False
+#     else:
+#         return True
 
-        # setting up intital frames to measure the Bluriness value
-        # setting up the blurriness threshold from the frist 6 seconds
-        # checking the following frames and comparing it to the bluriness value
-        # sharpen the frames if needed depending on the blurriness mean
-        if (initframecounter / 2) < 6:
-            if enterif == True:
-                if countdowntime == 0:
-                    HistoryList.append(gray)
-                notmoving = checkpixeldiff(listtocheck, listforehead)
-                if notmoving == False:
-                    text = "You Moved. Starting countdown again"
-                    resetloop = True
-                    HistoryList = []
-                    continue
+def nearestSide(t1, t2, b1, b2, prev, pt):
 
+    if intersect(t1, t2, prev, pt):
+        # print "segment "+ str(t1) + "and" + str(t1) + " intersect with " + str(prev)+ " and " + str(pt)
+        return t1, t2
+    elif intersect(t2, b2, prev, pt):
+        # print "segment " + str(t2) + "and" + str(b2) + " intersect with " + str(prev) + " and " + str(pt)
+        return t2, b2
+    elif intersect(t1, b1, prev, pt):
+        # print "segment " + str(t1) + "and" + str(b1) + " intersect with " + str(prev) + " and " + str(pt)
+        return t1, b1
+    elif intersect(b1, b2, prev, pt):
+        # print "segment " + str(b1) + "and" + str(b2) + " intersect with " + str(prev) + " and " + str(pt)
+        return b1, b2
+    else:
+        # print "segment " + str(b1) + "and" + str(b2) + " intersect with " + str(prev) + " and " + str(pt)
+        return b1, b2
+
+def withinRegion(AM, AB, AD):
+    if (0 < scalarMult(AM, AB)) and (scalarMult(AM, AB) < scalarMult(AB, AB)) and (0 < scalarMult(AM, AD)) and (
+            scalarMult(AM, AD) < scalarMult(AD, AD)):
+        return True
+    else:
+        return False
+
+def splinePred(kal, pts, hasROI):
+    global polate, prevpts0,prevpts
+    tempPrev = prevpts0
+    prevpts0 = prevpts
+    prevpts = pts
+    temp = []
+    for i in range(len(prevpts)):
+        x1, y1 = prevpts0[i]
+        x2, y2 = prevpts[i]
+        x3, y3 = pts[i]
+        x4, y4 = kal[i]
+        xx = np.asarray([x1, x2, x3])
+        yy = np.asarray([y1, y2, y3])
+        if hasROI:
+            try:
+                polate = interpolate.interp1d(xx, yy, bounds_error=False)
+                newY = int(polate(x4))
+                temp.append((x4,newY))
+            except:
+                prevpts = prevpts0
+                prevpts0 = tempPrev
+                temp.append(pts[i])
         else:
-            if enterif == True:
-                initframecounter = 0
-                if countdowntime == 0:
-                    notmoving = checkpixeldiff(listtocheck, listforehead)
-                    if notmoving == True:
-                        enterif = False
-                        continue
-                    else:
-                        resetloop = True
-                        HistoryList = []
+            try:
+                newY = int(polate(x4))
+                temp.append((x4, newY))
+            except:
+                prevpts = prevpts0
+                prevpts0 = tempPrev
+                temp.append(pts[i])
+    # if np.isnan(c):
+    #     g = int(y3 + (y1+y2+y3)/3)
+    #     return g
+    return temp
 
-                        continue
-                countdowntime = countdowntime - 1
 
-        if enterif == False:
+def restrictEst(t1, t2, b1, b2, pt, index):
+    AM = vectAB(b1, pt)
+    AB = vectAB(b1, t1)
+    AD = vectAB(b1, b2)
+    if withinRegion(AM, AB, AD):
+        return pt
+        # x, y = pt
+        # if x < 0 or x > 800 or y < 0 or y > 0:
+        #     if x < 0:
+        #         x = 0
+        #     elif x > 800:
+        #         x = 799
+        #     if y < 0:
+        #         y = 0
+        #     elif y > 450:
+        #         y = 449
+        #     pt = (x, y)
+        # return pt
+    else:
+        # print prevpts[index]
+        # print estimation[index]
+        # print nearestSide(t1, t2, b1, b2, prevpts[index], estimation[index])
+        s1, s2 = nearestSide(t1, t2, b1, b2, prevpts[index], estimation[index])
+        return intersection(s1, s2, prevpts[index], estimation[index])
 
-            threshold = findvarmean(HistoryList)
-            if cv2.Laplacian(gray, cv2.CV_64F).var() < threshold:
-                HSVframe = cv2.bilateralFilter(HSVframe, 9, 75, 75)
-                gaussian = cv2.GaussianBlur(HSVframe, (9, 9), 10.0)
-                HSVframe = cv2.addWeighted(
-                    HSVframe, 1.5, gaussian, -0.5, 0, HSVframe)
+def intersection(pt1, pt2, ptA, ptB):
+    """ this returns the intersection of Line(pt1,pt2) and Line(ptA,ptB)
 
-            else:
-                HistoryList.pop(listcounter)
-                HistoryList.append(gray)
-                threshold = findvarmean(HistoryList)
-                listcounter = listcounter + 1
-                if listcounter == len(HistoryList):
-                    listcounter = 0
+        returns a tuple: (xi, yi, valid, r, s), where
+        (xi, yi) is the intersection
+        r is the scalar multiple such that (xi,yi) = pt1 + r*(pt2-pt1)
+        s is the scalar multiple such that (xi,yi) = pt1 + s*(ptB-ptA)
+            valid == 0 if there are 0 or inf. intersections (invalid)
+            valid == 1 if it has a unique intersection ON the segment    """
 
-        if enterif == True:
-            currentcount = countdowntime
-            if foundlandmark == False:
-                ctd = "Searching For Face"
-            else:
-                ctd = "Face Found"
+    DET_TOLERANCE = 0.00000001
+    # the first line is pt1 + r*(pt2-pt1)
+    # in component form:
+    x1, y1 = pt1;
+    x2, y2 = pt2
+    dx1 = x2 - x1;
+    dy1 = y2 - y1
+    # the second line is ptA + s*(ptB-ptA)
+    x, y = ptA;
+    xB, yB = ptB;
+    dx = xB - x;
+    dy = yB - y;
 
-            ctd2 = ctd
-            cv2.putText(frame, ctd, (30, 30),
-                        cv2.FONT_HERSHEY_PLAIN, 1.5, (0, 0, 255))
+    DET = (-dx1 * dy + dy1 * dx)
 
-        # setting the previous ROI to cerrent ROI
-        prevROI1 = currROI1
-        prevROI2 = currROI2
-        prevROI3 = currROI3
+    if math.fabs(DET) < DET_TOLERANCE: return (-1, -1)
 
-        # setting the current ROI to next ROI
-        currROI1 = gray[listforehead[1]:listforehead[1] +
-                                        10, listforehead[0]:listforehead[0] + 10]
-        currROI2 = gray[listleftface[1]:listleftface[1] +
-                                        10, listleftface[0]:listleftface[0] + 10]
-        currROI3 = gray[listrightface[1]:listrightface[1] +
-                                         10, listrightface[0]:listrightface[0] + 10]
+    # now, the determinant should be OK
+    DETinv = 1.0 / DET
 
-        pointsListRoi1, pointsListRoi2, pointsListRoi3, avelist1, avearray2, Normalizedlist = [], [], [], [], [], [
-            8]
+    # find the scalar amount along the "self" segment
+    r = DETinv * (-dy * (x - x1) + dx * (y - y1))
 
-        # finding the middle points of the region of interest for Kalman Filter Calculation
-        for x1 in range(1):
-            a1 = int((listforehead[0] + listforehead[2]) / 2) + x1
-            b1 = int((listleftface[0] + listleftface[2]) / 2) + x1
-            c1 = int((listrightface[0] + listrightface[2]) / 2) + x1
-            for y1 in range(5):
-                a2 = int((listforehead[1] + listforehead[3]) / 2) + y1
-                b2 = int((listleftface[1] + listleftface[3]) / 2) + y1
-                c2 = int((listrightface[1] + listrightface[3]) / 2) + y1
+    # find the scalar amount along the input line
+    s = DETinv * (-dy1 * (x - x1) + dx1 * (y - y1))
 
-                tup1 = (a1, a2)
-                tup2 = (b1, b2)
-                tup3 = (c1, c2)
+    # return the average of the two descriptions
+    xi = (x1 + r * dx1 + x + s * dx) / 2.0
+    yi = (y1 + r * dy1 + y + s * dy) / 2.0
+    return (int(xi), int(yi))
 
-                pointsListRoi1.append(tup1)
-                pointsListRoi2.append(tup2)
-                pointsListRoi3.append(tup3)
-                allPoints = pointsListRoi1 + pointsListRoi2 + pointsListRoi3
-            d = 0
+def kalman_filter (s1, s2, s3, s4, pts, hasROI):
+    global previousBlurr, prevpts
 
-        # if face is found
-        if foundlandmark == True:
-            # seeting the previous to current
-            prevlistforehead = listforehead
-            prevlistleftface = listleftface
-            prevlistrightface = listrightface
-            prevallpoints = allPoints
-            topright = (pts[0][0], pts[0][1])
-            bottomright = (pts[1][0], pts[1][1])
-            topleft = (pts[3][0], pts[3][1])
-            bottomleft = (pts[2][0], pts[2][1])
+    updateKalman(s1, s3, s4, pts)                  # update with current reading
 
-            # Passing the points to the Kalman filter
-            ptsss = kalman_filter(
-                topleft, bottomleft, topright, bottomright, allPoints, foundlandmark)
+    prevpts = pts
+    est = estimate(s1, s2, s3, s4)                   # get new points if the face is blurred
+    spline = splinePred(est, pts, hasROI)
+    return spline
 
-            # finding the length of the ROI
-            a11 = int(abs(listforehead[0] - listforehead[2]) / 4)
-            b11 = int(abs(listleftface[0] - listleftface[2]) / 4)
-            c11 = int(abs(listrightface[0] - listrightface[2]) / 4)
+def estimate(s1, s2, s3, s4):
+    global estimation
+    for i in range(len(prevpts)):
+        tp = kalman[i].predict()
+        x,y = int(tp[0]), int(tp[1])
+        tp = (int(tp[0]), int(tp[1]))
+        estimation[i] = restrictEst(s1, s2, s3, s4, tp, i)
+        # for xx, yy in estimation:
+        #     if xx>800 or yy>450:
+        #         print "+=+=+=+=+==+=+=+=+"
+        #         print s1, s2, s3, s4
+        #         break
+        # x, y = estimation[i]
+        # if y < 0 or x < 0:
+        #     print x, y
+        #     print "==============================================================="
+        #     print s1, s2, s3, s4, i
+    return estimation
 
-            a22 = int(abs(listforehead[1] - listforehead[3]) / 4)
-            b22 = int(abs(listleftface[1] - listleftface[3]) / 4)
-            c22 = int(abs(listrightface[1] - listrightface[3]) / 4)
 
-            ptsss2 = [ptsss[0], ptsss[5], ptsss[10]]
-
-            # Finding the HSV value of the points of the ROI and storing it
-            for xaxis in range(ptsss[0][0] - a11, ptsss[0][0] + a11):
-                for yaxis in range(ptsss[0][1] - a22, ptsss[0][1] + a22):
-                    Normalizedlist.append(HSVframe[yaxis][xaxis][0])
-            cv2.circle(
-                frame, (ptsss[0][0], ptsss[0][1]), 8, (0, 0, 255), -1)
-
-            for xaxis in range(ptsss[5][0] - b11, ptsss[5][0] + b11):
-                for yaxis in range(ptsss[5][1] - b22, ptsss[5][1] + b22):
-                    Normalizedlist.append(HSVframe[yaxis][xaxis][0])
-            cv2.circle(
-                frame, (ptsss[5][0], ptsss[5][1]), 8, (0, 0, 255), -1)
-
-            for xaxis in range(ptsss[10][0] - c11, ptsss[10][0] + c11):
-                for yaxis in range(ptsss[5][1] - c22, ptsss[5][1] + c22):
-                    Normalizedlist.append(HSVframe[yaxis][xaxis][0])
-            cv2.circle(
-                frame, (ptsss[10][0], ptsss[10][1]), 8, (0, 0, 255), -1)
-
-            avearray2 = np.asarray(Normalizedlist)
-            # taking the mean of the ROi
-            totalmean = int(np.mean(avearray2))
-
-        else:
-
-            # When face not found work with previous values
-            # Passing the points to the Kalman filter
-            ptsss = kalman_filter(
-                topleft, bottomleft, topright, bottomright, ptsss, foundlandmark)
-            ptsss2 = [ptsss[0], ptsss[5], ptsss[10]]
-
-            # Finding the HSV value of the points of the ROI and storing it
-            for xaxis in range(ptsss[0][0] - a11, ptsss[0][0] + a11):
-                for yaxis in range(ptsss[0][1] - a22, ptsss[0][1] + a22):
-                    Normalizedlist.append(HSVframe[yaxis][xaxis][0])
-
-            # cv2.circle(frame, (ptsss[0][0], ptsss[0][1]), 8, (0, 0, 255), -1)
-
-            for xaxis in range(ptsss[5][0] - b11, ptsss[5][0] + b11):
-                for yaxis in range(ptsss[5][1] - b22, ptsss[5][1] + b22):
-                    Normalizedlist.append(HSVframe[yaxis][xaxis][0])
-
-            # cv2.circle(frame, (ptsss[5][0], ptsss[5][1]), 8, (0, 0, 255), -1)
-
-            for xaxis in range(ptsss[10][0] - c11, ptsss[10][0] + c11):
-                for yaxis in range(ptsss[5][1] - c22, ptsss[5][1] + c22):
-                    Normalizedlist.append(HSVframe[yaxis][xaxis][0])
-            # cv2.circle(frame, (ptsss[10][0], ptsss[10][1]), 8, (0, 0, 255), -1)
-
-            avearray2 = np.asarray(Normalizedlist)
-            # Taking the mean of the ROI
-            totalmean = int(np.mean(avearray2))
-'''
 
 
