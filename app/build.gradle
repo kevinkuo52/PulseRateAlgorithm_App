@@ -10,8 +10,6 @@ android {
         targetSdkVersion 26
 
 
-
-
         python {
             // If Chaquopy fails to find Python on your build machine, enable and edit the
             // following line to point to a Python 3.4+ executable.

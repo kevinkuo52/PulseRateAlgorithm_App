@@ -96,7 +96,7 @@ class NpScipy(static_proxy()):
         C = Point(10.0,10.0)
 
         return SD.orient2d(A,B,C)
-    @method(jarray(jarray(jdouble)),[jarray(jdouble),jarray(jdouble),jarray(jdouble),jarray(jdouble),jarray(jarray(jdouble)), jboolean])
+    @method(jarray(jarray(jint)),[jarray(jint),jarray(jint),jarray(jint),jarray(jint),jarray(jarray(jint)), jboolean])
     def py_kalman_filter (self, s1, s2, s3, s4, pts, hasROI):
         return kalman_filter(s1, s2, s3, s4, pts, hasROI)
 

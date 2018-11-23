@@ -1,14 +1,22 @@
 package com.kevintkuo.datasciencelibrary;
 
+import android.Manifest;
+import android.os.Environment;
+import android.support.v4.app.ActivityCompat;
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
+import android.util.Log;
 import android.widget.Button;
+import android.widget.Toast;
 
 import com.chaquo.python.PyObject;
 import com.chaquo.python.Python;
 import com.chaquo.python.android.AndroidPlatform;
 
 
+import java.io.File;
+import java.io.FileOutputStream;
+import java.io.IOException;
 import java.util.Arrays;
 
 
@@ -19,6 +27,12 @@ public class MainActivity extends AppCompatActivity {
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
+
+        // Get runtime permission for writing to csv
+        ActivityCompat.requestPermissions(this, new String[]{Manifest.permission.WRITE_EXTERNAL_STORAGE}, 1);
+        //write to csv:
+        //writeToFile("testCSV", "1.0,2.3\n4.0,5.0,6.0\n");
+
         if (! Python.isStarted()) {
             Python.start(new AndroidPlatform(getApplicationContext()));
         }
@@ -86,5 +100,40 @@ public class MainActivity extends AppCompatActivity {
         double[][] pts = {{12.0,1.0},{10.0,18.0},{180.0,1.0},{28.0,1.0},{18.0,17.0},{19.0,19.0},{17.0,8.0},{20.0,17.0},{1800.0,17.0},{14.0,17.0},{1.0,17.0},
                 {100.0,1.0},{18.0,1.0},{1.0,11.0},{1.0,7.0}};
         btn.setText(Arrays.toString(npScipy.py_kalman_filter(s1, s2, s3, s4, pts, true)[0])+","+Arrays.toString(npScipy.py_kalman_filter(s1, s2, s3, s4, pts, true)[1]));
+    }
+
+    public  void writeToFile(String fileName, String body)
+    {
+        FileOutputStream fos = null;
+
+        try {
+            final File dir = new File(Environment.getExternalStorageDirectory().getAbsolutePath());
+
+            if (!dir.exists())
+            {
+                if(!dir.mkdirs()){
+                    Log.e("ALERT","could not create the directories");
+                }
+            }
+
+            final File myFile = new File(dir, fileName + ".csv");
+
+            if (!myFile.exists())
+            {
+                myFile.createNewFile();
+            }
+
+            fos = new FileOutputStream(myFile);
+
+            fos.write(body.getBytes());
+            fos.close();
+            Toast.makeText(getBaseContext(),
+                    "Done writing SD"+Environment.getExternalStorageDirectory().getAbsolutePath(),
+                    Toast.LENGTH_SHORT).show();
+        } catch (IOException e) {
+            // TODO Auto-generated catch block
+            Toast.makeText(getBaseContext(), e.getMessage(),
+                    Toast.LENGTH_SHORT).show();
+        }
     }
 }
